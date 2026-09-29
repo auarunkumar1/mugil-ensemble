@@ -1,4 +1,4 @@
-# MUGIL v19.3 — Complete Pipeline Technical Reference
+# MUGIL v19.4 — Complete Pipeline Technical Reference
 
 > A multi-model ensemble weather forecasting system for South India, producing
 > interpolated meteorological maps from 5 global NWP/AI models plus ECMWF
@@ -17,6 +17,7 @@
 8. [Map Rendering & Output Products](#8-map-rendering--output-products)
 9. [Convergence Calculation](#9-convergence-calculation)
 10. [Known Approximations](#10-known-approximations)
+11. [Changelog & Version History](#11-changelog--version-history)
 
 ---
 
@@ -76,12 +77,13 @@ These anchors constrain the interpolated elevation grid so that terrain-correcte
 
 ## 3. Data Acquisition
 
-### 3.1 Open-Meteo Forecast API
+### 3.1 Open-Meteo Forecast & Ensemble APIs
 
-For each of the 85 stations, the pipeline fetches **daily forecasts from 5 models** via the Open-Meteo API:
+For each of the 85 stations, the pipeline fetches **daily forecasts from 5 models** via Open-Meteo's API endpoints:
 
 ```
-GET https://api.open-meteo.com/v1/forecast
+GET https://api.open-meteo.com/v1/forecast          (for NWP models: IFS, ICON, GFS)
+GET https://ensemble-api.open-meteo.com/v1/ensemble (for AI models: WeatherNext 2, AIFS)
     ?latitude={lat}&longitude={lon}
     &daily={10 variables}
     &models={model_key}
@@ -104,7 +106,7 @@ GET https://api.open-meteo.com/v1/forecast
 | `winddirection_10m_dominant` | ° | Dominant wind direction (time-integrated) |
 | `et0_fao_evapotranspiration` | mm | FAO Penman-Monteith reference ET |
 
-**Total API calls:** 85 stations × 5 models = **425 requests** (run asynchronously via `aiohttp` with 20 connections per host).
+**Total API calls:** 85 stations × 5 models = **425 requests** (run asynchronously via `aiohttp` with connection pooling and semaphore throttling).
 
 ### 3.2 Caching
 
@@ -134,11 +136,11 @@ These are used for the sea-level temperature reduction (Section 6.2).
 |---|---|---|---|
 | ECMWF IFS 0.25° | `ecmwf_ifs025` | **35%** | Physics-based NWP |
 | ECMWF AIFS 0.25° | `ecmwf_aifs025` | **25%** | AI/ML (graph neural network) |
-| Google GraphCast | `google_graphcast_seamless` | **20%** | AI/ML (graph neural network) |
+| Google WeatherNext 2 | `google_weathernext2_ensemble` | **20%** | AI/ML (deep learning ensemble) |
 | DWD ICON Global | `icon_global` | **10%** | Physics-based NWP |
 | NCEP GFS | `gfs_seamless` | **10%** | Physics-based NWP |
 
-**Rationale:** ECMWF IFS is the consistently top-ranked global model in WMO scorecard verification. AIFS and GraphCast are the leading AI weather models. ICON and GFS provide diversity but with lower individual skill.
+**Rationale:** ECMWF IFS is the consistently top-ranked global model in WMO scorecard verification. ECMWF AIFS and Google DeepMind WeatherNext 2 provide state-of-the-art AI-driven forecasting skill. ICON and GFS provide ensemble diversity.
 
 ### 4.2 Variable-Specific Weights
 
@@ -147,7 +149,7 @@ Three variables have custom weight tables that override the base weights:
 | Variable | Top Model | Rationale |
 |---|---|---|
 | **Precipitation** | ECMWF IFS (45%), ICON (25%) | Physics models handle precip better than AI models |
-| **Temperature** | ECMWF AIFS (35%), GraphCast (30%) | AI models excel at smooth fields like temperature |
+| **Temperature** | ECMWF AIFS (35%), WeatherNext 2 (30%) | AI models excel at smooth fields like temperature |
 | **Wind Gusts** | ECMWF IFS (40%), ICON (30%) | Convective gusts need explicit parameterization |
 
 All other variables (CAPE, dewpoint, VPD, ET0, wind speed) use the base weight table.
@@ -503,3 +505,21 @@ The current-day forecast includes data that may partially be observed (analysis)
 ### 10.4 Precipitation Non-Negativity
 
 RBF interpolation does not enforce non-negativity. Precipitation values below 1.0 mm are masked to NaN for display, which hides any negative overshoot. The underlying grid may contain physically impossible negative values between widely-spaced stations with large precipitation gradients.
+
+---
+
+## 11. Changelog & Version History
+
+### v19.4 (Current)
+- **Google WeatherNext 2 Integration**: Replaced deprecated Google GraphCast (`google_graphcast_seamless`) with Google DeepMind's operational **WeatherNext 2** (`google_weathernext2_ensemble`, 20% ensemble weight).
+- **ECMWF AIFS Endpoint Fix**: Routed `ecmwf_aifs025` to Open-Meteo's `https://ensemble-api.open-meteo.com/v1/ensemble` endpoint where ECMWF AIFS data is served, resolving empty/null returns from the standard forecast endpoint.
+- **Dynamic Endpoint Dispatcher**: Added automatic URL routing in `fetch_one_model_async` to direct AI models to `ensemble-api` and NWP models to `api.open-meteo.com`.
+- **Pipeline Versioning**: Upgraded pipeline implementation to [`mugil_v19.4.py`](file:///c:/Users/Plasma/Documents/pyscripts/weather2/mugil-ensemble/mugil_v19.4.py) with updated User-Agent header.
+
+### v19.3
+- **Sea-Level Temperature Reduction**: Station temperatures reduced to sea level before RBF interpolation and projected back using 3.0°C/km night lapse.
+- **Physical Scale Convergence**: Scaled wind convergence using actual physical distance (meters) based on grid latitude, scaled to 10⁻⁵ s⁻¹.
+- **Heat Index Revision**: Implemented standard NWS Rothfusz regression with high/low relative humidity adjustments.
+- **Synoptic LPA Detection**: Increased minimum filter footprint to 150 pixels (~180 km) for reliable LPA detection.
+- **ECMWF Lead Time Consistency**: Aligned snapshot valid hours to exactly 12:00 UTC.
+
