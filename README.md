@@ -408,11 +408,61 @@ Implemented in [`mugil_sst_maps.py`](mugil_sst_maps.py) and executed as Step 4 o
 ### 8.3 Pacific Basin ENSO Map (`00_pacific_enso_sst.png`)
 - **Domain**: Comprehensive Pacific Basin view from 120°E to 280°E (-60°S to +65°N) on a 180°-centered `PlateCarree` projection.
 - **ENSO Monitoring Boxes**: Highlights active monitoring boxes for El Niño / La Niña index calculations:
-  - **Niño 4** (160°E–210°E, 5°S–5°N)
-  - **Niño 3.4** (190°E–240°E / 170°W–120°W, 5°S–5°N) with real-time calculated regional mean SST
-  - **Niño 3** (210°E–270°E, 5°S–5°N)
-  - **Niño 1+2** (270°E–280°E, 10°S–0°)
+  - **Niño 4** (160°E–210°E, 5°S–5°N) — *Yellow box*
+  - **Niño 3.4** (190°E–240°E / 170°W–120°W, 5°S–5°N) — *Red box* with real-time calculated regional mean SST
+  - **Niño 3** (210°E–270°E, 5°S–5°N) — *Sky blue box*
+  - **Niño 1+2** (270°E–280°E, 10°S–0°) — *Purple box*
 - **Latitudinal Scope**: Broad oceanic coverage reaching from the Bering Sea / Sub-Arctic margin to the Southern Ocean / Sub-Antarctic margin (-2.0°C to 31.0°C `turbo` scale).
+
+### 8.4 Deep Dive: ENSO Tracking Regions (Niño 1+2, 3, 3.4, 4)
+
+**ENSO (El Niño–Southern Oscillation)** is a coupled ocean-atmosphere climate phenomenon characterized by cyclical sea-surface temperature departures across the equatorial Pacific ($5^\circ\text{S} \text{ to } 5^\circ\text{N}$). Because the basin is vast, meteorologists divide the equatorial corridor into four designated monitoring boxes numbered from East to West:
+
+```
+WEST (Warm Pool)                                                     EAST (South America)
+160°E                 180°                150°W                120°W          90°W   80°W
+  ┌─────────────────────┬───────────────────┬────────────────────┬──────────────┬─────┐
+  │      Niño 4         │                   │      Niño 3        │   Niño 1+2   │Peru/│
+  │  (160°E – 150°W)    │                   │  (150°W – 90°W)    │(90°W – 80°W) │Ecu. │
+  └─────────────────────┴───────────────────┴────────────────────┴──────────────┴─────┘
+                    ┌───────────────────────────┐
+                    │         Niño 3.4          │   <-- GOLD STANDARD BENCHMARK
+                    │     (170°W – 120°W)       │
+                    └───────────────────────────┘
+```
+
+#### Regional Definitions & Meteorological Roles:
+
+1. **Niño 1+2 ($0^\circ–10^\circ\text{S},\; 90^\circ\text{W}–80^\circ\text{W}$)** — *Far Eastern Pacific*
+   - Located along the coastal waters off Ecuador and northern Peru.
+   - Historically gave El Niño its name (Peruvian fishermen noticed sudden warming around December).
+   - Smallest and most volatile box. High sensitivity to coastal Kelvin wave shoaling; drives **"Coastal El Niño"** events producing torrential floods in western South America even while the broader central Pacific remains neutral.
+
+2. **Niño 3 ($5^\circ\text{N}–5^\circ\text{S},\; 150^\circ\text{W}–90^\circ\text{W}$)** — *Eastern Equatorial Pacific*
+   - Historically the primary index before high-resolution satellite radiometers.
+   - Exhibits large natural temperature swings and anchors canonical Eastern Pacific (EP) El Niño events (e.g., 1982–83, 1997–98).
+
+3. **Niño 4 ($5^\circ\text{N}–5^\circ\text{S},\; 160^\circ\text{E}–150^\circ\text{W}$)** — *Western-Central Pacific*
+   - Straddles the International Date Line (180°) adjacent to the Western Pacific Warm Pool.
+   - Climatologically warm base SST ($\sim 28.5^\circ\text{C} - 29.5^\circ\text{C}$).
+   - Even small positive anomalies ($+0.5^\circ\text{C}$) elevate temperatures beyond the deep-convection threshold ($>28.0^\circ\text{C}$), restructuring the Walker Circulation. Tracks **"Central Pacific / Modoki"** El Niño events.
+
+4. **Niño 3.4 ($5^\circ\text{N}–5^\circ\text{S},\; 170^\circ\text{W}–120^\circ\text{W}$)** — *The Global Standard*
+   - Spans the transition zone overlapping western Niño 3 and eastern Niño 4.
+   - **Official benchmark:** Used by NOAA (Oceanic Niño Index / ONI), IMD, ECMWF, and the WMO to designate official El Niño / La Niña events.
+   - Serves as the atmospheric teleconnection driver: heating here shifts the rising branch of the Pacific Walker Circulation and alters global jet streams.
+
+#### Classification Thresholds & South Asian Monsoon Teleconnections
+
+SST anomalies are evaluated relative to centered 30-year base periods:
+
+| Niño 3.4 Anomaly ($\Delta \text{SST}$) | ENSO Phase | Atmospheric Dynamic | Teleconnection to Indian Monsoon |
+|---|---|---|---|
+| **$\ge +0.5^\circ\text{C}$** | **El Niño** (Warm Phase) | Pacific Walker cell shifts east; suppressed upward motion over Maritime Continent & South Asia | Tends to suppress Southwest Monsoon precipitation; heightened risk of prolonged monsoon breaks / drought |
+| **$-0.5^\circ\text{C} \text{ to } +0.5^\circ\text{C}$** | **Neutral** | Climatological Walker cell; deep convection anchored over Indonesia / Western Pacific | Normal climatological monsoon baseline governed by regional synoptics |
+| **$\le -0.5^\circ\text{C}$** | **La Niña** (Cool Phase) | Enhanced easterly trade winds; intense convective piling over Western Pacific Warm Pool | Favorable for Indian Monsoon; typically enhances Southwest Monsoon rainfall and post-monsoon cyclogenesis |
+
+MUGIL calculates the live mean SST inside the **Niño 3.4 region** directly from the NOAA OISST grid and stamps the current value and anomaly threshold indicators into the output map footer.
 
 ---
 
