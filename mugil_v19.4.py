@@ -8,6 +8,8 @@
 #      with Google DeepMind WeatherNext 2 (google_weathernext2_ensemble) via Open-Meteo ensemble endpoint.
 #   2. ECMWF AIFS ENDPOINT ROUTING: Routed ecmwf_aifs025 to Open-Meteo ensemble endpoint
 #      (ensemble-api.open-meteo.com) resolving empty/null forecasts from deprecated forecast endpoint path.
+#   3. OCEANIC SST DIAGNOSTICS: Integrated high-resolution NOAA OISST v2.1 maps for the
+#      Indian Ocean Dipole (IOD: Arabian Sea & Bay of Bengal) and Pacific Basin (ENSO Niño 1+2, 3, 3.4, 4).
 #
 # v19.3 Upgrades:
 #   1. SEA-LEVEL TEMPERATURE REDUCTION: Station temperatures reduced to sea level
@@ -1275,5 +1277,12 @@ if __name__ == "__main__":
     finally:
         if os.path.exists(temp_grib_path):
             os.remove(temp_grib_path)
+
+    log.info("\n🌊 Step 4: Generating Oceanic Diagnostics (IOD & Pacific SST for El Niño/La Niña)...")
+    try:
+        from mugil_sst_maps import generate_ocean_sst_maps
+        generate_ocean_sst_maps(OUT_DIR, RUN_TIMESTAMP)
+    except Exception as e:
+        log.warning(f"  ✘ Ocean SST map generation failed or bypassed: {e}")
 
     log.info(f"\n✅ Pipeline complete → '{OUT_DIR}/'")
