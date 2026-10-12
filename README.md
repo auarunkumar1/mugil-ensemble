@@ -1,4 +1,4 @@
-# MUGIL v19.4 — Complete Pipeline Technical Reference
+# MUGIL v19.4.2 — Complete Pipeline Technical Reference
 
 > A multi-model ensemble weather forecasting system for South India, producing
 > interpolated meteorological maps from 5 global NWP/AI models plus ECMWF
@@ -615,11 +615,18 @@ RBF interpolation does not enforce non-negativity. Precipitation values below 1.
 
 ## 12. Changelog & Version History
 
-### v19.4 (Current)
+### v19.4.2 (Current)
+- **NOAA OISST Near-Real-Time (NRT) Routing**: Switched ERDDAP dataset targets from delayed-mode science aggregations (`ncdcOisst21Agg`) to Near-Real-Time aggregations (`ncdcOisst21NrtAgg_LonPM180` and `ncdcOisst21NrtAgg`). Eliminates the ~16-day delayed-mode QC latency and ensures IOD and Pacific ENSO SST maps reflect observations from within 1–2 days of runtime, with automatic fallback to delayed-mode grids if NRT endpoints are unavailable.
+- **Robust Network Retries & Timeouts**: Increased request timeout to 35 seconds per slice with multi-endpoint fallback handling for large griddap JSON responses.
+
+### v19.4.1
 - **Oceanic SST Diagnostics Module**: Added standalone & pipeline-integrated module [`mugil_sst_maps.py`](mugil_sst_maps.py) fetching NOAA OISST v2.1 via ERDDAP. Generates:
   - **Indian Ocean Dipole (IOD)**: Arabian Sea & Bay of Bengal surface thermal structure with land mass fully masked out and regional SST averages computed in real-time.
   - **Pacific Ocean Basin (ENSO)**: Full Pacific overview (-60°S to +65°N) with highlighted Niño 4, Niño 3.4, Niño 3, and Niño 1+2 monitoring boxes for El Niño / La Niña analysis.
 - **User-Configurable Station Network**: Refactored documentation and station definitions to emphasize that the station and sensor configuration (`locations`, `topo_anchors`, and domain extents) is completely user-configurable and adaptable to any region.
+- **Deep-Dive Technical Guide on ENSO**: Comprehensive documentation on Niño monitoring boxes, Walker Circulation dynamics, and Southwest Monsoon teleconnections.
+
+### v19.4
 - **Google WeatherNext 2 Integration**: Replaced deprecated Google GraphCast (`google_graphcast_seamless`) with Google DeepMind's operational **WeatherNext 2** (`google_weathernext2_ensemble`, 20% ensemble weight).
 - **ECMWF AIFS Endpoint Fix**: Routed `ecmwf_aifs025` to Open-Meteo's `https://ensemble-api.open-meteo.com/v1/ensemble` endpoint where ECMWF AIFS data is served, resolving empty/null returns from the standard forecast endpoint.
 - **Dynamic Endpoint Dispatcher**: Added automatic URL routing in `fetch_one_model_async` to direct AI models to `ensemble-api` and NWP models to `api.open-meteo.com`.

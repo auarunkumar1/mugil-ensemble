@@ -1,7 +1,12 @@
-# MUGIL Ensemble Weather Forecasting Pipeline — v19.4 (Corrected)
+# MUGIL Ensemble Weather Forecasting Pipeline — v19.4.2
 # ========================================================
 # Generates interpolated meteorological maps for South India from
 # multiple NWP and AI models via Open-Meteo & ECMWF Open Data.
+#
+# v19.4.2 Upgrades:
+#   1. NOAA OISST NEAR-REAL-TIME (NRT) ROUTING: Switched ERDDAP dataset targets
+#      to ncdcOisst21NrtAgg_LonPM180 and ncdcOisst21NrtAgg with delayed-mode fallback,
+#      eliminating the ~16-day latency on oceanic SST maps.
 #
 # v19.4 Upgrades:
 #   1. GOOGLE WEATHERNEXT 2 INTEGRATION: Replaced deprecated GraphCast (google_graphcast_seamless)

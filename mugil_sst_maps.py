@@ -48,16 +48,22 @@ except Exception:
 
 def fetch_iod_sst():
     """Fetch OISST v2.1 for Arabian Sea & Bay of Bengal (0-25N, 55-98E)."""
-    url = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg_LonPM180.json?sst[(last)][(0.0)][(0.0):2:(25.0)][(55.0):2:(98.0)]"
+    urls = [
+        "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21NrtAgg_LonPM180.json?sst[(last)][(0.0)][(0.0):2:(25.0)][(55.0):2:(98.0)]",
+        "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg_LonPM180.json?sst[(last)][(0.0)][(0.0):2:(25.0)][(55.0):2:(98.0)]",
+    ]
     r = None
-    for attempt in range(3):
-        try:
-            r = requests.get(url, timeout=25)
-            if r.status_code == 200:
-                break
-        except Exception:
-            pass
-        time.sleep(2)
+    for url in urls:
+        for attempt in range(2):
+            try:
+                r = requests.get(url, timeout=35)
+                if r.status_code == 200:
+                    break
+            except Exception:
+                pass
+            time.sleep(1)
+        if r is not None and r.status_code == 200:
+            break
 
     if r is None or r.status_code != 200:
         raise RuntimeError(f"Failed to fetch IOD SST from NOAA ERDDAP (status {r.status_code if r else 'None'})")
@@ -87,16 +93,22 @@ def fetch_iod_sst():
 
 def fetch_pacific_sst():
     """Fetch OISST v2.1 for Pacific Ocean (-60 to 65N, 120 to 280E)."""
-    url = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg.json?sst[(last)][(0.0)][(-60.0):6:(65.0)][(120.0):6:(280.0)]"
+    urls = [
+        "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21NrtAgg.json?sst[(last)][(0.0)][(-60.0):6:(65.0)][(120.0):6:(280.0)]",
+        "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg.json?sst[(last)][(0.0)][(-60.0):6:(65.0)][(120.0):6:(280.0)]",
+    ]
     r = None
-    for attempt in range(3):
-        try:
-            r = requests.get(url, timeout=25)
-            if r.status_code == 200:
-                break
-        except Exception:
-            pass
-        time.sleep(2)
+    for url in urls:
+        for attempt in range(2):
+            try:
+                r = requests.get(url, timeout=35)
+                if r.status_code == 200:
+                    break
+            except Exception:
+                pass
+            time.sleep(1)
+        if r is not None and r.status_code == 200:
+            break
 
     if r is None or r.status_code != 200:
         raise RuntimeError(f"Failed to fetch Pacific SST from NOAA ERDDAP (status {r.status_code if r else 'None'})")
