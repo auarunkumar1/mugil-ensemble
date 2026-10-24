@@ -47,8 +47,9 @@ except Exception:
 
 
 def fetch_iod_sst():
-    """Fetch OISST v2.1 for Arabian Sea & Bay of Bengal (0-25N, 55-98E)."""
+    """Fetch OISST / CoralTemp for Arabian Sea & Bay of Bengal (0-25N, 55-98E)."""
     urls = [
+        "https://coastwatch.noaa.gov/erddap/griddap/noaacrwsstDaily.json?analysed_sst[(last)][(0.0):5:(25.0)][(55.0):5:(98.0)]",
         "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21NrtAgg_LonPM180.json?sst[(last)][(0.0)][(0.0):2:(25.0)][(55.0):2:(98.0)]",
         "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg_LonPM180.json?sst[(last)][(0.0)][(0.0):2:(25.0)][(55.0):2:(98.0)]",
     ]
@@ -56,7 +57,7 @@ def fetch_iod_sst():
     for url in urls:
         for attempt in range(2):
             try:
-                r = requests.get(url, timeout=35)
+                r = requests.get(url, timeout=25)
                 if r.status_code == 200:
                     break
             except Exception:
@@ -69,22 +70,27 @@ def fetch_iod_sst():
         raise RuntimeError(f"Failed to fetch IOD SST from NOAA ERDDAP (status {r.status_code if r else 'None'})")
 
     data = r.json()
+    cols = data['table']['columnNames']
+    lat_idx_col = cols.index('latitude')
+    lon_idx_col = cols.index('longitude')
+    sst_idx_col = cols.index('analysed_sst') if 'analysed_sst' in cols else cols.index('sst')
+
     rows = data['table']['rows']
     raw_date = rows[0][0][:10]
     dt = datetime.strptime(raw_date, "%Y-%m-%d")
     date_str = dt.strftime("%d %b %Y")
 
-    lats = np.array(sorted(list(set(row[2] for row in rows))))
-    lons = np.array(sorted(list(set(row[3] for row in rows))))
+    lats = np.array(sorted(list(set(row[lat_idx_col] for row in rows))))
+    lons = np.array(sorted(list(set(row[lon_idx_col] for row in rows))))
 
     lat_idx = {lat: i for i, lat in enumerate(lats)}
     lon_idx = {lon: j for j, lon in enumerate(lons)}
 
     sst_grid = np.full((len(lats), len(lons)), np.nan, dtype=float)
     for row in rows:
-        lat = row[2]
-        lon = row[3]
-        val = row[4]
+        lat = row[lat_idx_col]
+        lon = row[lon_idx_col]
+        val = row[sst_idx_col]
         if val is not None:
             sst_grid[lat_idx[lat], lon_idx[lon]] = val
 
@@ -92,7 +98,42 @@ def fetch_iod_sst():
 
 
 def fetch_pacific_sst():
-    """Fetch OISST v2.1 for Pacific Ocean (-60 to 65N, 120 to 280E)."""
+    """Fetch OISST / CoralTemp for Pacific Ocean (-60 to 65N, 120 to 280E)."""
+    # 1. Primary: coastwatch.noaa.gov (CoralTemp 5km global, fast and reliable)
+    try:
+        url_west = "https://coastwatch.noaa.gov/erddap/griddap/noaacrwsstDaily.json?analysed_sst[(last)][(-60.0):10:(65.0)][(120.0):10:(180.0)]"
+        url_east = "https://coastwatch.noaa.gov/erddap/griddap/noaacrwsstDaily.json?analysed_sst[(last)][(-60.0):10:(65.0)][(-180.0):10:(-80.0)]"
+        rw = requests.get(url_west, timeout=25)
+        re = requests.get(url_east, timeout=25)
+        if rw.status_code == 200 and re.status_code == 200:
+            data_w = rw.json()
+            data_e = re.json()
+            cols = data_w['table']['columnNames']
+            lat_c = cols.index('latitude')
+            lon_c = cols.index('longitude')
+            sst_c = cols.index('analysed_sst') if 'analysed_sst' in cols else cols.index('sst')
+            rows_w = data_w['table']['rows']
+            rows_e = data_e['table']['rows']
+            for row in rows_e:
+                row[lon_c] += 360.0
+            all_rows = rows_w + rows_e
+            raw_date = all_rows[0][0][:10]
+            dt = datetime.strptime(raw_date, "%Y-%m-%d")
+            date_str = dt.strftime("%d %b %Y")
+            lats = np.array(sorted(list(set(row[lat_c] for row in all_rows))))
+            lons = np.array(sorted(list(set(row[lon_c] for row in all_rows))))
+            lat_idx = {lat: i for i, lat in enumerate(lats)}
+            lon_idx = {lon: j for j, lon in enumerate(lons)}
+            sst_grid = np.full((len(lats), len(lons)), np.nan, dtype=float)
+            for row in all_rows:
+                val = row[sst_c]
+                if val is not None:
+                    sst_grid[lat_idx[row[lat_c]], lon_idx[row[lon_c]]] = val
+            return lons, lats, sst_grid, date_str
+    except Exception:
+        pass
+
+    # 2. Fallback: coastwatch.pfeg.noaa.gov (0-360 OISST)
     urls = [
         "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21NrtAgg.json?sst[(last)][(0.0)][(-60.0):6:(65.0)][(120.0):6:(280.0)]",
         "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg.json?sst[(last)][(0.0)][(-60.0):6:(65.0)][(120.0):6:(280.0)]",
@@ -114,22 +155,27 @@ def fetch_pacific_sst():
         raise RuntimeError(f"Failed to fetch Pacific SST from NOAA ERDDAP (status {r.status_code if r else 'None'})")
 
     data = r.json()
+    cols = data['table']['columnNames']
+    lat_idx_col = cols.index('latitude')
+    lon_idx_col = cols.index('longitude')
+    sst_idx_col = cols.index('sst') if 'sst' in cols else cols.index('analysed_sst')
+
     rows = data['table']['rows']
     raw_date = rows[0][0][:10]
     dt = datetime.strptime(raw_date, "%Y-%m-%d")
     date_str = dt.strftime("%d %b %Y")
 
-    lats = np.array(sorted(list(set(row[2] for row in rows))))
-    lons = np.array(sorted(list(set(row[3] for row in rows))))
+    lats = np.array(sorted(list(set(row[lat_idx_col] for row in rows))))
+    lons = np.array(sorted(list(set(row[lon_idx_col] for row in rows))))
 
     lat_idx = {lat: i for i, lat in enumerate(lats)}
     lon_idx = {lon: j for j, lon in enumerate(lons)}
 
     sst_grid = np.full((len(lats), len(lons)), np.nan, dtype=float)
     for row in rows:
-        lat = row[2]
-        lon = row[3]
-        val = row[4]
+        lat = row[lat_idx_col]
+        lon = row[lon_idx_col]
+        val = row[sst_idx_col]
         if val is not None:
             sst_grid[lat_idx[lat], lon_idx[lon]] = val
 
