@@ -1,0 +1,24 @@
+# MUGIL v19.6 Python Dependencies
+# ========================================================
+# Core numerical and scientific computing
+numpy>=1.26.0
+pandas>=2.2.0
+scipy>=1.12.0
+
+# Geospatial mapping and spatial analysis
+cartopy>=0.23.0
+shapely>=2.0.0
+xarray>=2024.0.0
+Pillow>=10.0.0
+
+# Plotting and visualization
+matplotlib>=3.8.0
+
+# HTTP networking and API fetching
+requests>=2.31.0
+urllib3>=2.0.0
+
+# ECMWF Open Data GRIB2 decoding
+cfgrib>=0.9.14.0
+eccodes>=2.35.0
+findlibs>=0.1.2

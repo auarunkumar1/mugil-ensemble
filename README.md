@@ -1,17 +1,17 @@
-# MUGIL v19.5 — Complete Pipeline Technical Reference
+# MUGIL v19.6 — Complete Pipeline Technical Reference
 
-> A multi-model ensemble weather forecasting system for South India, producing
-> interpolated meteorological maps from 5 global NWP/AI models plus ECMWF
-> high-resolution GRIB data and NOAA satellite SST diagnostics.
+> A beyond-standard multi-model ensemble weather forecasting system for South India, producing
+> outlier-penalized consensus forecasts, model convergence analytics, and publication-grade
+> meteorological vector maps from 5 global NWP/AI models plus ECMWF high-resolution GRIB data.
 
 ---
 
 ## Table of Contents
 1. [Architecture Overview](#1-architecture-overview)
 2. [Station Network & Configuration](#2-station-network--configuration)
-3. [Data Acquisition & Quota Management (v19.5 Split Batch Ingestion)](#3-data-acquisition--quota-management-v195-split-batch-ingestion)
-4. [Ensemble Weighting & True Member Statistics](#4-ensemble-weighting--true-member-statistics)
-5. [Derived Variables & Indices](#5-derived-variables--indices)
+3. [Data Acquisition & Quota Management (v19.6 Split Batch Ingestion)](#3-data-acquisition--quota-management-v196-split-batch-ingestion)
+4. [Outlier-Penalized Robust Ensemble (MAD + Tukey M-Estimator)](#4-outlier-penalized-robust-ensemble-mad--tukey-m-estimator)
+5. [Derived Variables & Regional Scenario Matrix](#5-derived-variables--regional-scenario-matrix)
 6. [Spatial Interpolation & Homogeneous Model Sets](#6-spatial-interpolation--homogeneous-model-sets)
 7. [ECMWF GRIB Automation](#7-ecmwf-grib-automation)
 8. [Oceanic Diagnostics (IOD & Pacific SST via NOAA CoastWatch)](#8-oceanic-diagnostics-iod--pacific-sst-via-noaa-coastwatch)
@@ -333,7 +333,30 @@ $$\text{Convergence} = -\left(\frac{\partial u}{\partial x} + \frac{\partial v}{
 
 ## 12. Changelog & Version History
 
-### v19.5 (Current Revision)
+### v19.6 (Current Revision)
+- **Outlier-Penalized Robust Ensemble (M-Estimator):**
+  - Fully resolved over-forecasting bias and phantom 30 mm rainfall on dry days.
+  - Replaced arbitrary static weights with equal multi-model weighting ($1/K$).
+  - Implemented Median Absolute Deviation (MAD) scale estimation with Tukey's Biweight M-estimator. Rogue single-model convective blowups are penalized down to 0 weight, while multi-model consensus clusters are preserved.
+  - Added physical zero-flooring: any consensus $<0.5\text{ mm}$ is strictly snapped to $0.0\text{ mm}$.
+- **COMK-Style Modern Vector Cartography:**
+  - Modernized the map rendering engine, retiring dark Google satellite terrain tiles in favor of a clean, high-contrast meteorological vector basemap (crisp white land surface `#ffffff`, soft oceanic blue `#edf3f9`, and thin 2° lat/lon gridlines).
+  - Adopted stepped discrete contour intervals matching COMK: `[0.5, 3.0, 10.0, 25.0, 40.0, 60.0, 100.0, 300.0] mm` with all values $<0.5\text{ mm}$ cleanly masked.
+  - Added dynamic domain peak rainfall annotations featuring a red star marker and callout box (`MAX: XX.X mm`).
+- **Spatial Model Agreement & Convergence Map (`02d`):**
+  - Spatially maps multi-model agreement % (0–100%) across South India (Red/Orange = Divergence $<50\%$, Yellow = Moderate $55–70\%$, Blue = Consensus $>80\%$).
+  - **100% Clean Map Surface:** Removed all overlapping floating annotation boxes from the map surface to prevent defacing spatial contours.
+  - **Dedicated Scorecard Table Below Map:** Embedded a publication-grade scorecard table directly in the lower panel below the map tracking the 4 key anchor points (**Gudiyatham**, **Madurai**, **Vaithiyampettai**, and **Attibele–Hosur**) with color-coded confidence status pills.
+- **Regional Scenario & Probability Report (`00_regional_scenario_summary.md`):**
+  - Auto-generates structured daily markdown reports evaluating 4 Core Operational Regions (North TN & Chennai, Delta & Central TN, South TN, Western Ghats & Kongu) across 4 scenarios: Rain Consensus, Heat Stress ($T_{\text{max}} \ge 38^\circ\text{C}$), Night Cooling ($T_{\text{min}}$ drop), and Low Pressure / Trough activity.
+- **Two-Pass Label Collision Avoidance & Margin Expansion:**
+  - Prioritized anchor points first and automatically suppressed nearby redundant stations (e.g. Hosur next to Attibele-Hosur, Vellore next to Gudiyatham), eliminating text overlap.
+  - Expanded left padding to 0.60 inches to guarantee latitude tick labels (`8°N`, `10°N`, etc.) are never clipped at the image edge.
+- **Open-Meteo Fair-Use Rate Limiting Guard:**
+  - Enforced 10–12s minimum inter-request pacing and rolling 60-second quota tracking ($\le 300$ location-weights/min).
+  - Handled `Minutely limit reached` with a clean 65-second sleep backoff to eliminate 429 quota exhaustion.
+
+### v19.5
 - **Split Ingestion Architecture (Quota & Rate Limit Fix):** Completely resolved Open-Meteo HTTP 429 quota exhaustion. Physics NWP models (ECMWF IFS, ICON Global, GFS) are routed to `api.open-meteo.com/v1/forecast` ($\sim 44$ calls each) while AI models (ECMWF AIFS, Google WeatherNext 2) are routed to `ensemble-api.open-meteo.com/v1/ensemble` ($\sim 3,180$ total calls). Total consumption ($\approx 3,312$ calls) runs comfortably within the 5,000/hr free-tier cap.
 - **Smart 429 Backoff & Pacing:** Enforced 5.0s fair-use inter-call pacing. Minutely 429 errors sleep a full 60 seconds; hourly quota errors abort immediately to prevent trapped 5-minute retry loops.
 - **Incremental Staging Checkpoints (`api_cache_staging_YYYY-MM-DD.json`):** Each model's response is written to disk immediately upon completion. If a run is interrupted, previously fetched models are restored instantly without re-querying Open-Meteo.
