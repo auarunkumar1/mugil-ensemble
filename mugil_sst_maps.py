@@ -26,6 +26,19 @@ import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 from datetime import datetime, timezone
 
+# Universal Open Font Stack: Select best available open font to eliminate font warnings on Linux
+def _detect_open_font():
+    import matplotlib.font_manager as fm
+    available = {f.name for f in fm.fontManager.ttflist}
+    for candidate in ["Open Sans", "Fira Sans", "Noto Sans", "Liberation Sans", "DejaVu Sans"]:
+        if candidate in available:
+            return candidate
+    return "sans-serif"
+
+OPEN_FONT = _detect_open_font()
+plt.rcParams['font.sans-serif'] = [OPEN_FONT, 'Open Sans', 'Fira Sans', 'Noto Sans', 'Liberation Sans', 'DejaVu Sans', 'sans-serif']
+plt.rcParams['font.family'] = 'sans-serif'
+
 # Load locally cached Natural Earth shapefiles
 try:
     land_shp = shpreader.natural_earth('50m', 'physical', 'land')
@@ -247,12 +260,12 @@ def render_iod_map(lons, lats, sst_grid, date_str, out_path, run_timestamp=None)
 
     # Oceanic Basin Annotations
     as_text = f"ARABIAN SEA\n({as_mean:.1f}°C avg)" if not np.isnan(as_mean) else "ARABIAN SEA"
-    ax.text(66, 15, as_text, color="#ffffff", fontsize=12, weight="black",
+    ax.text(66, 15, as_text, color="#ffffff", fontsize=12, weight="bold",
             ha="center", va="center", transform=ccrs.PlateCarree(), zorder=5,
             path_effects=[pe.withStroke(linewidth=3, foreground="#111827")])
 
     bob_text = f"BAY OF BENGAL\n({bob_mean:.1f}°C avg)" if not np.isnan(bob_mean) else "BAY OF BENGAL"
-    ax.text(88, 14, bob_text, color="#ffffff", fontsize=12, weight="black",
+    ax.text(88, 14, bob_text, color="#ffffff", fontsize=12, weight="bold",
             ha="center", va="center", transform=ccrs.PlateCarree(), zorder=5,
             path_effects=[pe.withStroke(linewidth=3, foreground="#111827")])
 
@@ -342,7 +355,7 @@ def render_pacific_map(lons, lats, sst_grid, date_str, out_path, run_timestamp=N
         label_y = b["lat"][1] + 2.0 if b["name"] != "Niño 3.4" else b["lat"][1] + 3.8
         ax.text(
             (b["lon"][0] + b["lon"][1]) / 2, label_y, b["name"],
-            color=b["color"], fontsize=9.5, weight="black", ha="center", va="bottom",
+            color=b["color"], fontsize=9.5, weight="bold", ha="center", va="bottom",
             transform=ccrs.PlateCarree(), zorder=6,
             path_effects=[pe.withStroke(linewidth=3, foreground="#111827")]
         )
@@ -392,23 +405,23 @@ def _add_custom_header_footer(fig, title, date_str, run_timestamp, note):
 
     fig.text(0.04, 0.94, "MUGIL ENSEMBLE",
              ha="left", va="center", fontsize=18, color="#111111",
-             fontweight="black", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     fig.text(0.04, 0.90, f"{title}  •  {date_str}",
              ha="left", va="center", fontsize=10.5, color="#b22222",
-             fontweight="bold", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     fig.text(0.96, 0.94, "NOAA OISST v2.1 High-Resolution",
              ha="right", va="center", fontsize=9, color="#666666",
-             fontfamily="DejaVu Sans", zorder=10)
+             fontfamily=OPEN_FONT, zorder=10)
 
     fig.text(0.50, 0.045, note,
              ha="center", va="center", fontsize=9, color="#000080",
-             fontweight="bold", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     fig.text(0.50, 0.02, f"⚠️ Experimental · Data: NOAA OISST · Generated: {run_timestamp}",
              ha="center", va="center", fontsize=7.5, color="#555555",
-             fontstyle="italic", fontfamily="DejaVu Sans", zorder=10)
+             fontstyle="italic", fontfamily=OPEN_FONT, zorder=10)
 
 
 def generate_ocean_sst_maps(out_dir=".", run_timestamp=None):

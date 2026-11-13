@@ -64,6 +64,7 @@ import time
 import os
 import json
 import math
+import glob
 from datetime import datetime, timedelta, timezone
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -75,6 +76,19 @@ import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 from matplotlib.path import Path as MplPath
 from matplotlib.ticker import ScalarFormatter
+
+# Universal Open Font Stack: Select best available open font to eliminate font warnings on Linux
+def _detect_open_font():
+    import matplotlib.font_manager as fm
+    available = {f.name for f in fm.fontManager.ttflist}
+    for candidate in ["Open Sans", "Fira Sans", "Noto Sans", "Liberation Sans", "DejaVu Sans"]:
+        if candidate in available:
+            return candidate
+    return "sans-serif"
+
+OPEN_FONT = _detect_open_font()
+plt.rcParams['font.sans-serif'] = [OPEN_FONT, 'Open Sans', 'Fira Sans', 'Noto Sans', 'Liberation Sans', 'DejaVu Sans', 'sans-serif']
+plt.rcParams['font.family'] = 'sans-serif'
 
 import xarray as xr
 import cartopy.crs as ccrs
@@ -224,7 +238,7 @@ def set_model_label(models_used, member_counts, det_only=()):
 # ── 2. HTTP SESSION ───────────────────────────────────────────────────────────
 def make_session():
     s = requests.Session()
-    s.headers.update({"User-Agent": "MUGIL-Ensemble-Pipeline/19.5 (research; non-commercial)"})
+    s.headers.update({"User-Agent": "MUGIL-Ensemble-Pipeline/19.6 (research; non-commercial)"})
     retry_codes = list((500, 502, 503, 504))   # 429 is handled explicitly (needs ~60 s waits)
     retry = Retry(total=3, backoff_factor=0.5, status_forcelist=retry_codes)
     s.mount("https://", HTTPAdapter(max_retries=retry))
@@ -1374,7 +1388,7 @@ def _fit_footer_lines(parts, fontsize, max_width_in, joiner=" \u00b7 "):
     """Pack ``parts`` onto as many centered lines as needed so each line fits
     within ``max_width_in`` inches. Breaks only at part boundaries (never mid-word),
     and returns the parts unchanged (single line) when they already fit."""
-    # DejaVu Sans averages ~0.60 em per glyph; 0.65 adds a safety margin.
+    # Open font averages ~0.60-0.62 em per glyph; 0.65 adds a safety margin.
     avg_char_in = fontsize * 0.65 / 72.0
     chars_per_line = max(10, int(max_width_in / avg_char_in))
     lines, cur = [], ""
@@ -1423,22 +1437,22 @@ def _add_header_footer(fig, product_title, date_str, top_places_str="", has_cbar
     # Header Left: Brand & Product
     fig.text(0.045, 1.0 - (_hf * 0.32), "MUGIL ENSEMBLE FORECAST",
              ha="left", va="center", fontsize=15, color="#0f172a",
-             fontweight="black", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     header_title, header_fs = _fit_header_title(product_title, date_str, _map_w_in * 0.68, fontsize=13)
     title_color = "#1e3a8a" if ("Precipitation" in product_title or "Rain" in product_title) else "#b91c1c"
     fig.text(0.045, 1.0 - (_hf * 0.72), header_title,
              ha="left", va="center", fontsize=header_fs, color=title_color,
-             fontweight="bold", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     # Header Right: Model blend information badge
     m_badge = MODEL_LABEL_STR.replace(" · ", "  ·  ")
     fig.text(0.965, 1.0 - (_hf * 0.38), "MODELS BLENDED (EQUAL 1/K)",
              ha="right", va="center", fontsize=7.5, color="#64748b",
-             fontweight="bold", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
     fig.text(0.965, 1.0 - (_hf * 0.68), m_badge,
              ha="right", va="center", fontsize=8.0, color="#334155",
-             fontweight="medium", fontfamily="DejaVu Sans", zorder=10)
+             fontweight="semibold", fontfamily=OPEN_FONT, zorder=10)
 
     if top_places_str:
         top_parts = [p.strip() for p in top_places_str.split("  \u00b7  ")]
@@ -1446,7 +1460,7 @@ def _add_header_footer(fig, product_title, date_str, top_places_str="", has_cbar
         fig.text(0.50, y_top_pos,
                  _fit_footer_lines(top_parts, 9.0, _map_w_in),
                  ha="center", va="center", fontsize=9.0, color="#1e3a8a",
-                 fontweight="bold", fontfamily="DejaVu Sans", zorder=10)
+                 fontweight="bold", fontfamily=OPEN_FONT, zorder=10)
 
     footer_parts = [
         "⚠ Experimental — not for operational aviation, marine or emergency use",
@@ -1458,7 +1472,7 @@ def _add_header_footer(fig, product_title, date_str, top_places_str="", has_cbar
     fig.text(0.50, y_foot,
              _fit_footer_lines(footer_parts, 7.5, _map_w_in),
              ha="center", va="center", fontsize=7.5, color="#64748b",
-             fontstyle="italic", fontfamily="DejaVu Sans", zorder=10)
+             fontstyle="italic", fontfamily=OPEN_FONT, zorder=10)
 
 def save_map(grid, cmap, title, fname, df, col, unit, date_str,
              is_precip=False, norm=None, fixed_vmin=None, fixed_vmax=None,
@@ -1629,7 +1643,7 @@ def save_map(grid, cmap, title, fname, df, col, unit, date_str,
             cb.ax.yaxis.set_major_formatter(sf)
             cb.ax.yaxis.set_minor_formatter(sf)
 
-        cb.set_label(title, fontsize=8.5, labelpad=5, fontfamily="DejaVu Sans")
+        cb.set_label(title, fontsize=8.5, labelpad=5, fontfamily=OPEN_FONT)
         cb.ax.tick_params(labelsize=8)
 
     _add_header_footer(fig, title, date_str, top_places_str)
@@ -1702,7 +1716,7 @@ def save_synoptic_map(grid, title, fname, date_str):
             accepted.append((lat, lon, masked_mslp[y, x]))
 
     for lat, lon, val in accepted:
-        ax.text(lon, lat, 'L', color='#b22222', fontsize=22, weight='black',
+        ax.text(lon, lat, 'L', color='#b22222', fontsize=22, weight='bold',
                 ha='center', va='center', zorder=10, transform=ccrs.PlateCarree(),
                 path_effects=[pe.withStroke(linewidth=3, foreground="white")])
         ax.text(lon, lat-0.2, f"{int(val)} hPa", color='#b22222', fontsize=9, weight='bold',
@@ -1876,7 +1890,7 @@ def save_model_confidence_map(df, date_str, tag, fname):
 
     cb = fig.colorbar(im, cax=cbar_ax, ticks=CONF_LEVELS)
     cb.ax.set_yticklabels([f"{x}%" for x in CONF_LEVELS])
-    cb.set_label("Multi-Model Agreement & Convergence (%)", fontsize=8.5, labelpad=5, fontfamily="DejaVu Sans")
+    cb.set_label("Multi-Model Agreement & Convergence (%)", fontsize=8.5, labelpad=5, fontfamily=OPEN_FONT)
     cb.ax.tick_params(labelsize=8)
 
     # 3. Add the Clean Structured Scorecard Table BELOW THE MAP
@@ -1970,7 +1984,7 @@ def generate_regional_scenario_summary(daily_rows, fdays):
     """
     lines = []
     lines.append("# MUGIL Beyond-Standard Ensemble: Regional Scenarios & Convergence Report")
-    lines.append(f"**Generated:** {RUN_TIMESTAMP} | **Pipeline Version:** v19.5 (Outlier-Penalized)")
+    lines.append(f"**Generated:** {RUN_TIMESTAMP} | **Pipeline Version:** v19.6 (Outlier-Penalized)")
     lines.append("")
     lines.append("> **Note on Methodology:** Rogue model spikes are automatically detected and penalized using a Tukey-Biweight M-estimator (MAD scale). Multi-model agreement % is tracked dynamically across 4 scenarios: Rain, Heat, Cold, and Low Pressure.")
     lines.append("")
@@ -2078,7 +2092,7 @@ def generate_regional_scenario_summary(daily_rows, fdays):
         f.write(report_content)
     log.info(f"  📋 Regional Scenario Summary Report written → {summary_path}")
     print("\n" + "="*80)
-    print("MUGIL v19.5 OUTLIER-PENALIZED REGIONAL SCENARIO SUMMARY (DAY 1 PREVIEW)")
+    print("MUGIL v19.6 OUTLIER-PENALIZED REGIONAL SCENARIO SUMMARY (DAY 1 PREVIEW)")
     print("="*80)
     try:
         d1_target = "## Day 1: " + fdays[0].strftime("%d %b %Y (%a)")
@@ -2483,10 +2497,12 @@ if __name__ == "__main__":
     finally:
         if os.path.exists(temp_grib_path):
             os.remove(temp_grib_path)
-        # cfgrib writes .idx sidecars; v19.4 left them littering the repo
-        for sidecar in (temp_grib_path + ".idx", temp_grib_path + ".5b7b6.idx"):
-            if os.path.exists(sidecar):
+        # cfgrib writes hash-based .idx sidecars; clean up all related index files
+        for sidecar in glob.glob(f"{temp_grib_path}*.idx"):
+            try:
                 os.remove(sidecar)
+            except Exception:
+                pass
 
     log.info("\n🌊 Step 4: Generating Oceanic Diagnostics (IOD & Pacific SST for El Niño/La Niña)...")
     try:
