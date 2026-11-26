@@ -1,5 +1,4 @@
-# MUGIL v19.6 Python Dependencies
-# ========================================================
+# MUGIL Ensemble Python Dependencies
 # Core numerical and scientific computing
 numpy>=1.26.0
 pandas>=2.2.0
